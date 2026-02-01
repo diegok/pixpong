@@ -86,6 +86,11 @@ func (r *Renderer) RenderGame(state protocol.GameState) {
 	r.screen.Clear()
 	screenW, screenH := r.screen.Size()
 
+	// Calculate scale factors to map court coordinates to screen coordinates
+	// Court coordinates come from the smallest terminal, screen may be larger
+	scaleX := float64(screenW) / float64(state.CourtWidth)
+	scaleY := float64(screenH-2) / float64(state.CourtHeight) // -2 for status bars
+
 	// Draw court background (black)
 	courtStyle := tcell.StyleDefault.Background(tcell.ColorBlack)
 	r.screen.FillRect(0, 1, screenW, screenH-2, courtStyle, ' ')
@@ -100,21 +105,29 @@ func (r *Renderer) RenderGame(state protocol.GameState) {
 	// Draw scoreboard at top center
 	r.renderScoreboard(state, screenW)
 
-	// Draw all paddles
+	// Draw all paddles (scaled to screen size)
 	for _, paddle := range state.Paddles {
 		paddleStyle := GetPlayerStyle(paddle.Color)
-		paddleTop := int(paddle.Y) - paddle.Height/2
-		for dy := 0; dy < paddle.Height; dy++ {
+		// Scale paddle position and height
+		scaledX := int(float64(paddle.Column) * scaleX)
+		scaledY := int(paddle.Y*scaleY) + 1 // +1 for top status bar
+		scaledHeight := int(float64(paddle.Height) * scaleY)
+		if scaledHeight < 1 {
+			scaledHeight = 1
+		}
+
+		paddleTop := scaledY - scaledHeight/2
+		for dy := 0; dy < scaledHeight; dy++ {
 			py := paddleTop + dy
 			if py >= 1 && py < screenH-1 {
-				r.screen.SetCell(paddle.Column, py, paddleStyle, PaddleChar)
+				r.screen.SetCell(scaledX, py, paddleStyle, PaddleChar)
 			}
 		}
 	}
 
-	// Draw ball
-	ballX := int(state.Ball.X)
-	ballY := int(state.Ball.Y)
+	// Draw ball (scaled to screen size)
+	ballX := int(state.Ball.X*scaleX)
+	ballY := int(state.Ball.Y*scaleY) + 1 // +1 for top status bar
 	if ballX >= 0 && ballX < screenW && ballY >= 1 && ballY < screenH-1 {
 		ballStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite)
 		r.screen.SetCell(ballX, ballY, ballStyle, BallChar)
