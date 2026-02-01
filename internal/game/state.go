@@ -105,6 +105,10 @@ func (gs *GameState) AssignTeams() {
 
 	// Assign right team
 	gs.assignTeamPaddles(rightTeam, protocol.TeamRight, paddleHeight)
+
+	// Initialize ball with velocity (launch toward random team)
+	launchRight := rand.Intn(2) == 0
+	gs.Ball.Reset(float64(gs.Width)/2, float64(gs.Height)/2, launchRight)
 }
 
 // assignTeamPaddles sets up paddles for a team
