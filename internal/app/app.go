@@ -11,6 +11,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 
+	"github.com/diegok/pixpong/internal/audio"
 	"github.com/diegok/pixpong/internal/client"
 	"github.com/diegok/pixpong/internal/config"
 	"github.com/diegok/pixpong/internal/protocol"
@@ -37,6 +38,7 @@ type App struct {
 	servingTeam     protocol.Team
 	lobbyState      protocol.LobbyState
 	gameState       protocol.GameState
+	prevGameState   protocol.GameState // For sound detection
 	pauseState      protocol.PauseState
 	overState       protocol.GameOverState
 	rematchState    protocol.RematchState
@@ -57,6 +59,9 @@ func NewApp(cfg *config.Config) *App {
 // Run is the main entry point for the application.
 // It initializes the screen, sets up signal handling, and starts the game.
 func (a *App) Run() error {
+	// Initialize audio (ignore errors - game works without sound)
+	_ = audio.Init()
+
 	// Initialize screen
 	screen, err := ui.InitScreen()
 	if err != nil {
@@ -186,6 +191,9 @@ func (a *App) mainLoop() error {
 			a.inCountdown = false
 
 		case state := <-a.client.GameState:
+			// Detect sound events by comparing with previous state
+			a.detectSoundEvents(state)
+			a.prevGameState = state
 			a.gameState = state
 			a.inGame = true
 			a.inPause = false
@@ -341,8 +349,39 @@ func (a *App) render() {
 	}
 }
 
+// detectSoundEvents compares current and previous game state to trigger sounds
+func (a *App) detectSoundEvents(state protocol.GameState) {
+	prev := a.prevGameState
+
+	// Skip if no previous state (first frame)
+	if prev.Tick == 0 {
+		return
+	}
+
+	// Detect paddle hit: ball horizontal velocity reversed (and ball is in play area)
+	if state.Ball.X > 0 && state.Ball.X < float64(state.CourtWidth) {
+		// VX sign changed = hit something
+		if (prev.Ball.VX > 0 && state.Ball.VX < 0) || (prev.Ball.VX < 0 && state.Ball.VX > 0) {
+			audio.PlayPaddleHit()
+		}
+	}
+
+	// Detect wall bounce: ball vertical velocity reversed
+	if (prev.Ball.VY > 0 && state.Ball.VY < 0) || (prev.Ball.VY < 0 && state.Ball.VY > 0) {
+		audio.PlayWallBounce()
+	}
+
+	// Detect score: score changed
+	if state.LeftScore > prev.LeftScore || state.RightScore > prev.RightScore {
+		audio.PlayScore()
+	}
+}
+
 // cleanup shuts down all resources.
 func (a *App) cleanup() {
+	// Close audio
+	audio.Close()
+
 	// Close client connection
 	if a.client != nil {
 		a.client.Close()
