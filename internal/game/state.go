@@ -13,9 +13,9 @@ const (
 	BaseSpeedCap          = 1.5  // Base maximum ball speed
 	SpeedCapPerPlayer     = 0.3  // Additional speed cap per player
 	SpeedIncrement        = 1.05 // 5% speed increase per paddle hit
-	BasePaddleHeight      = 6    // Default paddle height (reduced)
-	MinPaddleHeight       = 2    // Minimum paddle height
-	PaddleHeightPerPlayer = 2    // Height reduction per additional player (more aggressive)
+	BasePaddleHeight      = 5    // Default paddle height
+	MinPaddleHeight       = 3    // Minimum paddle height
+	PaddleHeightPerPlayer = 1    // Height reduction per additional player
 )
 
 // PlayerInfo stores player metadata
@@ -95,18 +95,15 @@ func (gs *GameState) AssignTeams() {
 	leftTeam := shuffled[:halfCount]
 	rightTeam := shuffled[halfCount:]
 
-	// Calculate paddle height based on larger team
-	playersPerSide := len(rightTeam) // Right team may have 1 more if odd
-	if len(leftTeam) > playersPerSide {
-		playersPerSide = len(leftTeam)
-	}
-	paddleHeight := gs.CalculatePaddleHeight(playersPerSide)
+	// Calculate paddle height per team - fewer players = bigger paddles
+	leftPaddleHeight := gs.CalculatePaddleHeight(len(leftTeam))
+	rightPaddleHeight := gs.CalculatePaddleHeight(len(rightTeam))
 
 	// Assign left team
-	gs.assignTeamPaddles(leftTeam, protocol.TeamLeft, paddleHeight)
+	gs.assignTeamPaddles(leftTeam, protocol.TeamLeft, leftPaddleHeight)
 
 	// Assign right team
-	gs.assignTeamPaddles(rightTeam, protocol.TeamRight, paddleHeight)
+	gs.assignTeamPaddles(rightTeam, protocol.TeamRight, rightPaddleHeight)
 
 	// Initialize ball with velocity (launch toward random team)
 	launchRight := rand.Intn(2) == 0
@@ -160,11 +157,11 @@ func (gs *GameState) GetSpeedCap(playersPerSide int) float64 {
 	return BaseSpeedCap + float64(playersPerSide-1)*SpeedCapPerPlayer
 }
 
-// ProcessInput handles player input
+// ProcessInput handles player input - moves paddle immediately
 func (gs *GameState) ProcessInput(playerID int, dir protocol.Direction) {
 	paddle := gs.GetPaddle(playerID)
 	if paddle != nil {
-		paddle.SetDirection(dir)
+		paddle.ProcessInput(dir)
 	}
 }
 
@@ -190,17 +187,9 @@ func (gs *GameState) Update() {
 		return
 	}
 
-	// Handle waiting for serve - only allow paddle movement
+	// Handle waiting for serve - ball doesn't move
 	if gs.WaitingForServe {
-		for _, p := range gs.Paddles {
-			p.Move()
-		}
 		return
-	}
-
-	// Move paddles
-	for _, p := range gs.Paddles {
-		p.Move()
 	}
 
 	// Move ball

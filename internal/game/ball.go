@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	InitialBallSpeed = 0.35 // Balanced start speed
+	InitialBallSpeed = 0.28 // Comfortable start speed
 	MaxBounceAngle   = math.Pi / 3 // 60 degrees max
 )
 

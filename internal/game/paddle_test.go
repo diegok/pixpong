@@ -12,15 +12,13 @@ func TestPaddle_MoveUp(t *testing.T) {
 	paddle.CourtHeight = 24
 	paddle.Y = 12.0 // Center of court
 
-	paddle.SetDirection(protocol.DirUp)
 	initialY := paddle.Y
-
-	paddle.Move()
+	paddle.MoveUp()
 
 	if paddle.Y >= initialY {
 		t.Errorf("expected Y to decrease when moving up, was %f, now %f", initialY, paddle.Y)
 	}
-	expectedY := initialY - PaddleSpeed
+	expectedY := initialY - PaddleMoveAmount
 	if paddle.Y != expectedY {
 		t.Errorf("expected Y=%f, got %f", expectedY, paddle.Y)
 	}
@@ -32,15 +30,13 @@ func TestPaddle_MoveDown(t *testing.T) {
 	paddle.CourtHeight = 24
 	paddle.Y = 12.0 // Center of court
 
-	paddle.SetDirection(protocol.DirDown)
 	initialY := paddle.Y
-
-	paddle.Move()
+	paddle.MoveDown()
 
 	if paddle.Y <= initialY {
 		t.Errorf("expected Y to increase when moving down, was %f, now %f", initialY, paddle.Y)
 	}
-	expectedY := initialY + PaddleSpeed
+	expectedY := initialY + PaddleMoveAmount
 	if paddle.Y != expectedY {
 		t.Errorf("expected Y=%f, got %f", expectedY, paddle.Y)
 	}
@@ -52,11 +48,9 @@ func TestPaddle_StaysInBounds_Top(t *testing.T) {
 	paddle.CourtHeight = 24
 	paddle.Y = 3.5 // Near top, half height is 3.0
 
-	paddle.SetDirection(protocol.DirUp)
-
 	// Move multiple times to try to go out of bounds
 	for i := 0; i < 10; i++ {
-		paddle.Move()
+		paddle.MoveUp()
 	}
 
 	halfHeight := float64(paddle.Height) / 2
@@ -74,11 +68,9 @@ func TestPaddle_StaysInBounds_Bottom(t *testing.T) {
 	paddle.CourtHeight = 24
 	paddle.Y = 20.5 // Near bottom
 
-	paddle.SetDirection(protocol.DirDown)
-
 	// Move multiple times to try to go out of bounds
 	for i := 0; i < 10; i++ {
-		paddle.Move()
+		paddle.MoveDown()
 	}
 
 	halfHeight := float64(paddle.Height) / 2
@@ -163,23 +155,32 @@ func TestNewPaddle(t *testing.T) {
 	if paddle.Color != 5 {
 		t.Errorf("expected Color=5, got %d", paddle.Color)
 	}
-	if paddle.Direction != protocol.DirNone {
-		t.Errorf("expected Direction=DirNone, got %v", paddle.Direction)
-	}
 }
 
-func TestPaddle_MoveNone(t *testing.T) {
+func TestPaddle_ProcessInput(t *testing.T) {
 	paddle := NewPaddle(1, protocol.TeamLeft, 2, 1)
 	paddle.Height = 6
 	paddle.CourtHeight = 24
 	paddle.Y = 12.0
 
-	paddle.SetDirection(protocol.DirNone)
 	initialY := paddle.Y
 
-	paddle.Move()
-
+	// Test DirNone doesn't move
+	paddle.ProcessInput(protocol.DirNone)
 	if paddle.Y != initialY {
 		t.Errorf("expected Y to remain unchanged with DirNone, was %f, now %f", initialY, paddle.Y)
+	}
+
+	// Test DirUp moves up
+	paddle.ProcessInput(protocol.DirUp)
+	if paddle.Y >= initialY {
+		t.Errorf("expected Y to decrease with DirUp")
+	}
+
+	// Reset and test DirDown
+	paddle.Y = 12.0
+	paddle.ProcessInput(protocol.DirDown)
+	if paddle.Y <= initialY {
+		t.Errorf("expected Y to increase with DirDown")
 	}
 }

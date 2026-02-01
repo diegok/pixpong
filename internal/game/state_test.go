@@ -308,20 +308,24 @@ func TestGameState_ProcessInput(t *testing.T) {
 	gs.AddPlayer(2, "P2")
 	gs.AssignTeams()
 
-	// Set input for player 1
+	p1 := gs.GetPaddle(1)
+	p1InitialY := p1.Y
+
+	// Input for player 1 - should move paddle up immediately
 	gs.ProcessInput(1, protocol.DirUp)
 
-	p1 := gs.GetPaddle(1)
-	if p1.Direction != protocol.DirUp {
-		t.Errorf("expected Direction=DirUp, got %v", p1.Direction)
+	if p1.Y >= p1InitialY {
+		t.Errorf("expected paddle Y to decrease after DirUp, was %f, now %f", p1InitialY, p1.Y)
 	}
 
-	// Set input for player 2
+	p2 := gs.GetPaddle(2)
+	p2InitialY := p2.Y
+
+	// Input for player 2 - should move paddle down immediately
 	gs.ProcessInput(2, protocol.DirDown)
 
-	p2 := gs.GetPaddle(2)
-	if p2.Direction != protocol.DirDown {
-		t.Errorf("expected Direction=DirDown, got %v", p2.Direction)
+	if p2.Y <= p2InitialY {
+		t.Errorf("expected paddle Y to increase after DirDown, was %f, now %f", p2InitialY, p2.Y)
 	}
 
 	// Invalid player should not crash
@@ -464,7 +468,7 @@ func TestGameState_PauseAfterScore(t *testing.T) {
 		t.Errorf("expected game to be paused after score")
 	}
 
-	expectedPauseTicks := 2 * TickRate // 2 seconds
+	expectedPauseTicks := TickRate // 1 second
 	if gs.PauseTicksLeft != expectedPauseTicks {
 		t.Errorf("expected PauseTicksLeft=%d, got %d", expectedPauseTicks, gs.PauseTicksLeft)
 	}
