@@ -45,6 +45,9 @@ func (p *Paddle) Move() {
 			p.Y = maxY
 		}
 	}
+
+	// Reset direction after each move - requires new key press to move again
+	p.Direction = protocol.DirNone
 }
 
 func (p *Paddle) ContainsY(y float64) bool {

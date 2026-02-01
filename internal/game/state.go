@@ -26,18 +26,20 @@ type PlayerInfo struct {
 
 // GameState manages the complete game state
 type GameState struct {
-	Width        int
-	Height       int
-	Ball         *Ball
-	Paddles      []*Paddle
-	Players      []PlayerInfo
-	LeftScore    int
-	RightScore   int
-	PointsToWin  int
-	Tick         int
-	Paused       bool
+	Width          int
+	Height         int
+	Ball           *Ball
+	Paddles        []*Paddle
+	Players        []PlayerInfo
+	LeftScore      int
+	RightScore     int
+	PointsToWin    int
+	Tick           int
+	Paused         bool
 	PauseTicksLeft int
-	LastScorer   protocol.Team
+	LastScorer     protocol.Team
+	WaitingForServe bool
+	ServingTeam    protocol.Team
 }
 
 // NewGameState creates a new game state with the given dimensions
@@ -170,15 +172,28 @@ func (gs *GameState) ProcessInput(playerID int, dir protocol.Direction) {
 func (gs *GameState) Update() {
 	gs.Tick++
 
-	// Handle pause state
+	// Handle pause state (brief pause after score)
 	if gs.Paused {
 		gs.PauseTicksLeft--
 		if gs.PauseTicksLeft <= 0 {
 			gs.Paused = false
 			gs.PauseTicksLeft = 0
-			// Reset ball for next point
-			launchRight := gs.LastScorer == protocol.TeamRight
-			gs.Ball.Reset(float64(gs.Width)/2, float64(gs.Height)/2, launchRight)
+			// Enter waiting for serve state
+			gs.WaitingForServe = true
+			gs.ServingTeam = gs.LastScorer
+			// Position ball at center
+			gs.Ball.X = float64(gs.Width) / 2
+			gs.Ball.Y = float64(gs.Height) / 2
+			gs.Ball.VX = 0
+			gs.Ball.VY = 0
+		}
+		return
+	}
+
+	// Handle waiting for serve - only allow paddle movement
+	if gs.WaitingForServe {
+		for _, p := range gs.Paddles {
+			p.Move()
 		}
 		return
 	}
@@ -283,7 +298,26 @@ func (gs *GameState) CheckScore() {
 // startPause begins the post-score pause
 func (gs *GameState) startPause() {
 	gs.Paused = true
-	gs.PauseTicksLeft = 2 * TickRate // 2 seconds pause
+	gs.PauseTicksLeft = TickRate // 1 second pause before serve screen
+}
+
+// Serve launches the ball - called when serving team presses Enter
+func (gs *GameState) Serve(playerID int) bool {
+	if !gs.WaitingForServe {
+		return false
+	}
+
+	// Check if player is on serving team
+	paddle := gs.GetPaddle(playerID)
+	if paddle == nil || paddle.Team != gs.ServingTeam {
+		return false
+	}
+
+	// Launch the ball toward the other team
+	launchRight := gs.ServingTeam == protocol.TeamLeft
+	gs.Ball.Reset(float64(gs.Width)/2, float64(gs.Height)/2, launchRight)
+	gs.WaitingForServe = false
+	return true
 }
 
 // IsGameOver returns true if either team has won

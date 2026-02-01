@@ -27,16 +27,20 @@ type App struct {
 	server   *server.Server
 
 	// State
-	inLobby      bool
-	inGame       bool
-	gameOver     bool
-	inRematch    bool
-	inCountdown  bool
-	lobbyState   protocol.LobbyState
-	gameState    protocol.GameState
-	overState    protocol.GameOverState
-	rematchState protocol.RematchState
-	countdown    int
+	inLobby         bool
+	inGame          bool
+	gameOver        bool
+	inRematch       bool
+	inCountdown     bool
+	inPause         bool
+	waitingForServe bool
+	servingTeam     protocol.Team
+	lobbyState      protocol.LobbyState
+	gameState       protocol.GameState
+	pauseState      protocol.PauseState
+	overState       protocol.GameOverState
+	rematchState    protocol.RematchState
+	countdown       int
 
 	quit    chan struct{}
 	sigChan chan os.Signal
@@ -184,6 +188,8 @@ func (a *App) mainLoop() error {
 		case state := <-a.client.GameState:
 			a.gameState = state
 			a.inGame = true
+			a.inPause = false
+			a.waitingForServe = false
 			a.inLobby = false
 			a.inCountdown = false
 
@@ -204,6 +210,15 @@ func (a *App) mainLoop() error {
 			a.inCountdown = true
 			a.inLobby = false
 			a.inGame = false
+
+		case state := <-a.client.PauseState:
+			a.pauseState = state
+			a.inPause = true
+			a.waitingForServe = state.WaitingForServe
+			a.servingTeam = state.ServingTeam
+			a.inGame = true
+			a.inLobby = false
+			a.inCountdown = false
 
 		case err := <-a.client.Error:
 			a.renderer.RenderError(err.Error())
@@ -262,6 +277,12 @@ func (a *App) handleLobbyEvent(ev *tcell.EventKey) bool {
 
 // handleGameEvent handles events during gameplay.
 func (a *App) handleGameEvent(ev *tcell.EventKey) bool {
+	// Handle serve with Enter when waiting
+	if ev.Key() == tcell.KeyEnter && a.waitingForServe {
+		a.client.SendServe()
+		return false
+	}
+
 	switch ev.Key() {
 	case tcell.KeyUp:
 		a.client.SendInput(protocol.DirUp)
@@ -295,8 +316,8 @@ func (a *App) handleRematchEvent(ev *tcell.EventKey) bool {
 			if a.server != nil {
 				go a.server.StartGameWithCountdown()
 			}
-		} else if !a.rematchState.IsHost {
-			// Non-host marks themselves ready
+		} else {
+			// Mark ourselves ready (both host and non-host)
 			a.client.SendRematchReady()
 		}
 	}
@@ -309,6 +330,8 @@ func (a *App) render() {
 		a.renderer.RenderCountdown(a.countdown)
 	} else if a.inLobby {
 		a.renderer.RenderLobby(a.lobbyState)
+	} else if a.inPause {
+		a.renderer.RenderPause(a.pauseState)
 	} else if a.inGame {
 		a.renderer.RenderGame(a.gameState)
 	} else if a.gameOver {

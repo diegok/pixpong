@@ -36,6 +36,7 @@ const (
 	MsgRematchState
 	MsgCountdown
 	MsgPauseState
+	MsgServe
 )
 
 // Message is the wrapper for all network messages
@@ -138,10 +139,12 @@ type Countdown struct {
 
 // PauseState represents the pause state after a point is scored
 type PauseState struct {
-	SecondsLeft int
-	LeftScore   int
-	RightScore  int
-	LastScorer  Team
+	SecondsLeft     int
+	LeftScore       int
+	RightScore      int
+	LastScorer      Team
+	WaitingForServe bool
+	ServingTeam     Team
 }
 
 func init() {

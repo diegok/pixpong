@@ -153,6 +153,22 @@ func (c *Client) SendRematchReady() error {
 	return c.codec.Encode(&msg)
 }
 
+// SendServe sends a serve request to the server.
+func (c *Client) SendServe() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !c.connected {
+		return fmt.Errorf("not connected to server")
+	}
+
+	msg := protocol.Message{
+		Type:    protocol.MsgServe,
+		Payload: nil,
+	}
+	return c.codec.Encode(&msg)
+}
+
 // Close closes the connection to the server.
 func (c *Client) Close() {
 	c.mu.Lock()

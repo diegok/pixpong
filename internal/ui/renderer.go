@@ -190,6 +190,84 @@ func (r *Renderer) renderScoreboard(state protocol.GameState, screenW int) {
 	r.screen.DrawText(rightLabelX+len(rightLabel), 0, " ]", scoreboardStyle)
 }
 
+// RenderPause displays the pause/serve screen
+func (r *Renderer) RenderPause(state protocol.PauseState) {
+	r.screen.Clear()
+	screenW, screenH := r.screen.Size()
+
+	// Draw court background (black)
+	courtStyle := tcell.StyleDefault.Background(tcell.ColorBlack)
+	r.screen.FillRect(0, 1, screenW, screenH-2, courtStyle, ' ')
+
+	// Draw center dashed line
+	centerX := screenW / 2
+	lineStyle := tcell.StyleDefault.Foreground(tcell.ColorDarkGray)
+	for y := 1; y < screenH-1; y += 2 {
+		r.screen.SetCell(centerX, y, lineStyle, '|')
+	}
+
+	// Draw scoreboard
+	scoreText := fmt.Sprintf("[ LEFT %d - %d RIGHT ]", state.LeftScore, state.RightScore)
+	scoreX := (screenW - len(scoreText)) / 2
+	scoreStyle := tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorWhite).Bold(true)
+	r.screen.DrawText(scoreX, 0, scoreText, scoreStyle)
+
+	// Center message box
+	boxW := 30
+	boxH := 7
+	boxX := (screenW - boxW) / 2
+	boxY := (screenH - boxH) / 2
+	boxStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite)
+	r.screen.DrawBox(boxX, boxY, boxW, boxH, boxStyle)
+
+	// Fill box background
+	fillStyle := tcell.StyleDefault.Background(tcell.ColorDarkGray)
+	for y := boxY + 1; y < boxY+boxH-1; y++ {
+		for x := boxX + 1; x < boxX+boxW-1; x++ {
+			r.screen.SetCell(x, y, fillStyle, ' ')
+		}
+	}
+
+	if state.WaitingForServe {
+		// Show which team should serve
+		var teamName string
+		var teamStyle tcell.Style
+		if state.ServingTeam == protocol.TeamLeft {
+			teamName = "LEFT TEAM"
+			teamStyle = tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorRed).Bold(true)
+		} else {
+			teamName = "RIGHT TEAM"
+			teamStyle = tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorBlue).Bold(true)
+		}
+
+		serveText := fmt.Sprintf("%s SERVE", teamName)
+		serveX := (screenW - len(serveText)) / 2
+		r.screen.DrawText(serveX, boxY+2, serveText, teamStyle)
+
+		instructText := "Press ENTER to serve"
+		instructX := (screenW - len(instructText)) / 2
+		instructStyle := tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorGreen)
+		r.screen.DrawText(instructX, boxY+4, instructText, instructStyle)
+	} else {
+		// Brief pause after score - show who scored
+		var scorerName string
+		var scorerStyle tcell.Style
+		if state.LastScorer == protocol.TeamLeft {
+			scorerName = "LEFT TEAM"
+			scorerStyle = tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorRed).Bold(true)
+		} else {
+			scorerName = "RIGHT TEAM"
+			scorerStyle = tcell.StyleDefault.Background(tcell.ColorDarkGray).Foreground(tcell.ColorBlue).Bold(true)
+		}
+
+		scoreMsg := fmt.Sprintf("%s SCORES!", scorerName)
+		scoreMsgX := (screenW - len(scoreMsg)) / 2
+		r.screen.DrawText(scoreMsgX, boxY+3, scoreMsg, scorerStyle)
+	}
+
+	r.screen.Show()
+}
+
 // RenderGameOver displays the game over screen
 func (r *Renderer) RenderGameOver(state protocol.GameOverState) {
 	r.screen.Clear()

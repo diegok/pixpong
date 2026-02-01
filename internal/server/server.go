@@ -310,6 +310,13 @@ func (s *Server) handleMessage(client *Client, msg *protocol.Message) {
 		}
 		s.mu.Unlock()
 
+	case protocol.MsgServe:
+		s.mu.Lock()
+		if s.gameState != nil {
+			s.gameState.Serve(client.PlayerID)
+		}
+		s.mu.Unlock()
+
 	case protocol.MsgRematchReady:
 		s.SetClientRematchReady(client.ID)
 	}
@@ -394,14 +401,16 @@ func (s *Server) gameLoop() {
 
 			// Prepare state to broadcast
 			var msg *protocol.Message
-			if s.gameState.Paused {
+			if s.gameState.Paused || s.gameState.WaitingForServe {
 				msg = &protocol.Message{
 					Type: protocol.MsgPauseState,
 					Payload: protocol.PauseState{
-						SecondsLeft: s.gameState.PauseTicksLeft / TickRate,
-						LeftScore:   s.gameState.LeftScore,
-						RightScore:  s.gameState.RightScore,
-						LastScorer:  s.gameState.LastScorer,
+						SecondsLeft:     s.gameState.PauseTicksLeft / TickRate,
+						LeftScore:       s.gameState.LeftScore,
+						RightScore:      s.gameState.RightScore,
+						LastScorer:      s.gameState.LastScorer,
+						WaitingForServe: s.gameState.WaitingForServe,
+						ServingTeam:     s.gameState.ServingTeam,
 					},
 				}
 			} else {
