@@ -9,13 +9,13 @@ import (
 
 // Constants for game state management
 const (
-	TickRate             = 60   // Ticks per second
-	BaseSpeedCap         = 1.5  // Base maximum ball speed
-	SpeedCapPerPlayer    = 0.3  // Additional speed cap per player
-	SpeedIncrement       = 1.05 // 5% speed increase per paddle hit
-	BasePaddleHeight     = 8    // Default paddle height
-	MinPaddleHeight      = 3    // Minimum paddle height
-	PaddleHeightPerPlayer = 1   // Height reduction per additional player
+	TickRate              = 60   // Ticks per second
+	BaseSpeedCap          = 1.5  // Base maximum ball speed
+	SpeedCapPerPlayer     = 0.3  // Additional speed cap per player
+	SpeedIncrement        = 1.05 // 5% speed increase per paddle hit
+	BasePaddleHeight      = 6    // Default paddle height (reduced)
+	MinPaddleHeight       = 2    // Minimum paddle height
+	PaddleHeightPerPlayer = 2    // Height reduction per additional player (more aggressive)
 )
 
 // PlayerInfo stores player metadata

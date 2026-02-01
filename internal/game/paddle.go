@@ -2,17 +2,21 @@ package game
 
 import "github.com/diegok/pixpong/internal/protocol"
 
-const PaddleSpeed = 0.8
+const (
+	PaddleSpeed       = 1.2 // Increased for more responsive feel
+	MovementTimeout   = 8   // Ticks to keep moving after last input (~133ms at 60Hz)
+)
 
 type Paddle struct {
-	ID          int
-	Team        protocol.Team
-	Column      int // X position (fixed)
-	Y           float64
-	Height      int
-	Color       int
-	Direction   protocol.Direction
-	CourtHeight int
+	ID            int
+	Team          protocol.Team
+	Column        int // X position (fixed)
+	Y             float64
+	Height        int
+	Color         int
+	Direction     protocol.Direction
+	CourtHeight   int
+	MovementTicks int // Countdown for movement timeout
 }
 
 func NewPaddle(id int, team protocol.Team, column int, color int) *Paddle {
@@ -27,6 +31,9 @@ func NewPaddle(id int, team protocol.Team, column int, color int) *Paddle {
 
 func (p *Paddle) SetDirection(dir protocol.Direction) {
 	p.Direction = dir
+	if dir != protocol.DirNone {
+		p.MovementTicks = MovementTimeout // Reset timeout on new input
+	}
 }
 
 func (p *Paddle) Move() {
@@ -46,8 +53,13 @@ func (p *Paddle) Move() {
 		}
 	}
 
-	// Reset direction after each move - requires new key press to move again
-	p.Direction = protocol.DirNone
+	// Decrement movement timeout and stop when it expires
+	if p.MovementTicks > 0 {
+		p.MovementTicks--
+		if p.MovementTicks == 0 {
+			p.Direction = protocol.DirNone
+		}
+	}
 }
 
 func (p *Paddle) ContainsY(y float64) bool {
