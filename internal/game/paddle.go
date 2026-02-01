@@ -4,7 +4,7 @@ import "github.com/diegok/pixpong/internal/protocol"
 
 const (
 	PaddleSpeed       = 1.2 // Increased for more responsive feel
-	MovementTimeout   = 8   // Ticks to keep moving after last input (~133ms at 60Hz)
+	MovementTimeout   = 4   // Ticks to keep moving after last input (~67ms at 60Hz)
 )
 
 type Paddle struct {
