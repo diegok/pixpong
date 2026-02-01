@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/diegok/pixpong/internal/protocol"
@@ -108,10 +109,10 @@ func (r *Renderer) RenderGame(state protocol.GameState) {
 	// Draw all paddles (scaled to screen size)
 	for _, paddle := range state.Paddles {
 		paddleStyle := GetPlayerStyle(paddle.Color)
-		// Scale paddle position and height
-		scaledX := int(float64(paddle.Column) * scaleX)
-		scaledY := int(paddle.Y*scaleY) + 1 // +1 for top status bar
-		scaledHeight := int(float64(paddle.Height) * scaleY)
+		// Scale paddle position and height using rounding for smoother movement
+		scaledX := int(math.Round(float64(paddle.Column) * scaleX))
+		scaledY := int(math.Round(paddle.Y*scaleY)) + 1 // +1 for top status bar
+		scaledHeight := int(math.Round(float64(paddle.Height) * scaleY))
 		if scaledHeight < 1 {
 			scaledHeight = 1
 		}
@@ -125,9 +126,9 @@ func (r *Renderer) RenderGame(state protocol.GameState) {
 		}
 	}
 
-	// Draw ball (scaled to screen size)
-	ballX := int(state.Ball.X*scaleX)
-	ballY := int(state.Ball.Y*scaleY) + 1 // +1 for top status bar
+	// Draw ball (scaled to screen size, using rounding for smoother diagonal movement)
+	ballX := int(math.Round(state.Ball.X * scaleX))
+	ballY := int(math.Round(state.Ball.Y*scaleY)) + 1 // +1 for top status bar
 	if ballX >= 0 && ballX < screenW && ballY >= 1 && ballY < screenH-1 {
 		ballStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite)
 		r.screen.SetCell(ballX, ballY, ballStyle, BallChar)

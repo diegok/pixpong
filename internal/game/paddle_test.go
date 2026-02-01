@@ -6,39 +6,52 @@ import (
 	"github.com/diegok/pixpong/internal/protocol"
 )
 
-func TestPaddle_MoveUp(t *testing.T) {
+func TestPaddle_ProcessInput_Up(t *testing.T) {
 	paddle := NewPaddle(1, protocol.TeamLeft, 2, 1)
 	paddle.Height = 6
 	paddle.CourtHeight = 24
-	paddle.Y = 12.0 // Center of court
+	paddle.Y = 12.0
+	paddle.TargetY = 12.0
 
-	initialY := paddle.Y
-	paddle.MoveUp()
+	paddle.ProcessInput(protocol.DirUp)
 
-	if paddle.Y >= initialY {
-		t.Errorf("expected Y to decrease when moving up, was %f, now %f", initialY, paddle.Y)
-	}
-	expectedY := initialY - PaddleMoveAmount
-	if paddle.Y != expectedY {
-		t.Errorf("expected Y=%f, got %f", expectedY, paddle.Y)
+	expectedTarget := 12.0 - PaddleTargetStep
+	if paddle.TargetY != expectedTarget {
+		t.Errorf("expected TargetY=%f, got %f", expectedTarget, paddle.TargetY)
 	}
 }
 
-func TestPaddle_MoveDown(t *testing.T) {
+func TestPaddle_ProcessInput_Down(t *testing.T) {
 	paddle := NewPaddle(1, protocol.TeamLeft, 2, 1)
 	paddle.Height = 6
 	paddle.CourtHeight = 24
-	paddle.Y = 12.0 // Center of court
+	paddle.Y = 12.0
+	paddle.TargetY = 12.0
+
+	paddle.ProcessInput(protocol.DirDown)
+
+	expectedTarget := 12.0 + PaddleTargetStep
+	if paddle.TargetY != expectedTarget {
+		t.Errorf("expected TargetY=%f, got %f", expectedTarget, paddle.TargetY)
+	}
+}
+
+func TestPaddle_Update_MovesTowardTarget(t *testing.T) {
+	paddle := NewPaddle(1, protocol.TeamLeft, 2, 1)
+	paddle.Height = 6
+	paddle.CourtHeight = 24
+	paddle.Y = 12.0
+	paddle.TargetY = 10.0 // Target is above current
 
 	initialY := paddle.Y
-	paddle.MoveDown()
+	paddle.Update()
 
-	if paddle.Y <= initialY {
-		t.Errorf("expected Y to increase when moving down, was %f, now %f", initialY, paddle.Y)
+	// Should move toward target
+	if paddle.Y >= initialY {
+		t.Errorf("expected Y to decrease toward target, was %f, now %f", initialY, paddle.Y)
 	}
-	expectedY := initialY + PaddleMoveAmount
-	if paddle.Y != expectedY {
-		t.Errorf("expected Y=%f, got %f", expectedY, paddle.Y)
+	if paddle.Y <= paddle.TargetY {
+		t.Errorf("should not overshoot target in one update")
 	}
 }
 
@@ -46,19 +59,17 @@ func TestPaddle_StaysInBounds_Top(t *testing.T) {
 	paddle := NewPaddle(1, protocol.TeamLeft, 2, 1)
 	paddle.Height = 6
 	paddle.CourtHeight = 24
-	paddle.Y = 3.5 // Near top, half height is 3.0
+	paddle.Y = 3.5
+	paddle.TargetY = 0 // Try to go above top
 
-	// Move multiple times to try to go out of bounds
-	for i := 0; i < 10; i++ {
-		paddle.MoveUp()
+	// Update multiple times
+	for i := 0; i < 100; i++ {
+		paddle.Update()
 	}
 
 	halfHeight := float64(paddle.Height) / 2
 	if paddle.Y < halfHeight {
 		t.Errorf("paddle went above top boundary: Y=%f, halfHeight=%f", paddle.Y, halfHeight)
-	}
-	if paddle.TopY() < 0 {
-		t.Errorf("paddle top went above 0: TopY=%f", paddle.TopY())
 	}
 }
 
@@ -66,11 +77,12 @@ func TestPaddle_StaysInBounds_Bottom(t *testing.T) {
 	paddle := NewPaddle(1, protocol.TeamLeft, 2, 1)
 	paddle.Height = 6
 	paddle.CourtHeight = 24
-	paddle.Y = 20.5 // Near bottom
+	paddle.Y = 20.5
+	paddle.TargetY = 30 // Try to go below bottom
 
-	// Move multiple times to try to go out of bounds
-	for i := 0; i < 10; i++ {
-		paddle.MoveDown()
+	// Update multiple times
+	for i := 0; i < 100; i++ {
+		paddle.Update()
 	}
 
 	halfHeight := float64(paddle.Height) / 2
@@ -78,15 +90,12 @@ func TestPaddle_StaysInBounds_Bottom(t *testing.T) {
 	if paddle.Y > maxY {
 		t.Errorf("paddle went below bottom boundary: Y=%f, maxY=%f", paddle.Y, maxY)
 	}
-	if paddle.BottomY() > float64(paddle.CourtHeight) {
-		t.Errorf("paddle bottom went below court: BottomY=%f, CourtHeight=%d", paddle.BottomY(), paddle.CourtHeight)
-	}
 }
 
 func TestPaddle_ContainsY(t *testing.T) {
 	paddle := NewPaddle(1, protocol.TeamLeft, 2, 1)
 	paddle.Height = 6
-	paddle.Y = 12.0 // Center Y, paddle extends from 9 to 15
+	paddle.Y = 12.0
 
 	tests := []struct {
 		name     string
@@ -120,7 +129,7 @@ func TestPaddle_TopY(t *testing.T) {
 	paddle.Y = 12.0
 
 	topY := paddle.TopY()
-	expectedTop := 9.0 // 12 - 6/2
+	expectedTop := 9.0
 
 	if topY != expectedTop {
 		t.Errorf("expected TopY=%f, got %f", expectedTop, topY)
@@ -133,7 +142,7 @@ func TestPaddle_BottomY(t *testing.T) {
 	paddle.Y = 12.0
 
 	bottomY := paddle.BottomY()
-	expectedBottom := 15.0 // 12 + 6/2
+	expectedBottom := 15.0
 
 	if bottomY != expectedBottom {
 		t.Errorf("expected BottomY=%f, got %f", expectedBottom, bottomY)
@@ -157,30 +166,17 @@ func TestNewPaddle(t *testing.T) {
 	}
 }
 
-func TestPaddle_ProcessInput(t *testing.T) {
+func TestPaddle_ProcessInput_None(t *testing.T) {
 	paddle := NewPaddle(1, protocol.TeamLeft, 2, 1)
 	paddle.Height = 6
 	paddle.CourtHeight = 24
 	paddle.Y = 12.0
+	paddle.TargetY = 12.0
 
-	initialY := paddle.Y
-
-	// Test DirNone doesn't move
+	initialTarget := paddle.TargetY
 	paddle.ProcessInput(protocol.DirNone)
-	if paddle.Y != initialY {
-		t.Errorf("expected Y to remain unchanged with DirNone, was %f, now %f", initialY, paddle.Y)
-	}
 
-	// Test DirUp moves up
-	paddle.ProcessInput(protocol.DirUp)
-	if paddle.Y >= initialY {
-		t.Errorf("expected Y to decrease with DirUp")
-	}
-
-	// Reset and test DirDown
-	paddle.Y = 12.0
-	paddle.ProcessInput(protocol.DirDown)
-	if paddle.Y <= initialY {
-		t.Errorf("expected Y to increase with DirDown")
+	if paddle.TargetY != initialTarget {
+		t.Errorf("expected TargetY unchanged with DirNone, was %f, now %f", initialTarget, paddle.TargetY)
 	}
 }

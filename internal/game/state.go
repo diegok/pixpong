@@ -139,7 +139,9 @@ func (gs *GameState) assignTeamPaddles(paddles []*Paddle, team protocol.Team, he
 		p.Column = columnStart + (i+1)*columnSpacing
 		p.Height = height
 		p.CourtHeight = gs.Height
-		p.Y = float64(gs.Height) / 2 // Center paddle
+		centerY := float64(gs.Height) / 2
+		p.Y = centerY
+		p.TargetY = centerY // Initialize target to current position
 	}
 }
 
@@ -187,7 +189,12 @@ func (gs *GameState) Update() {
 		return
 	}
 
-	// Handle waiting for serve - ball doesn't move
+	// Update paddle positions (smooth movement toward targets)
+	for _, p := range gs.Paddles {
+		p.Update()
+	}
+
+	// Handle waiting for serve - ball doesn't move, but paddles can
 	if gs.WaitingForServe {
 		return
 	}

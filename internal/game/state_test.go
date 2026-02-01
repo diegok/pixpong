@@ -309,23 +309,23 @@ func TestGameState_ProcessInput(t *testing.T) {
 	gs.AssignTeams()
 
 	p1 := gs.GetPaddle(1)
-	p1InitialY := p1.Y
+	p1InitialTarget := p1.TargetY
 
-	// Input for player 1 - should move paddle up immediately
+	// Input for player 1 - should adjust target up
 	gs.ProcessInput(1, protocol.DirUp)
 
-	if p1.Y >= p1InitialY {
-		t.Errorf("expected paddle Y to decrease after DirUp, was %f, now %f", p1InitialY, p1.Y)
+	if p1.TargetY >= p1InitialTarget {
+		t.Errorf("expected paddle TargetY to decrease after DirUp, was %f, now %f", p1InitialTarget, p1.TargetY)
 	}
 
 	p2 := gs.GetPaddle(2)
-	p2InitialY := p2.Y
+	p2InitialTarget := p2.TargetY
 
-	// Input for player 2 - should move paddle down immediately
+	// Input for player 2 - should adjust target down
 	gs.ProcessInput(2, protocol.DirDown)
 
-	if p2.Y <= p2InitialY {
-		t.Errorf("expected paddle Y to increase after DirDown, was %f, now %f", p2InitialY, p2.Y)
+	if p2.TargetY <= p2InitialTarget {
+		t.Errorf("expected paddle TargetY to increase after DirDown, was %f, now %f", p2InitialTarget, p2.TargetY)
 	}
 
 	// Invalid player should not crash
